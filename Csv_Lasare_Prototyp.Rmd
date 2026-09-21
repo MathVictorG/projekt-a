@@ -1,0 +1,35 @@
+---
+title: "Csv Läsare Prototyp"
+author: "Samuel Carbeskär, et al"
+date: "`r.Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+river_data <- read.csv("A8_baltic_DIN.csv", header=FALSE, skip=1)
+drainage_area <- river_data$V2
+population <- river_data$V3
+urban_pop_perc <- river_data$V4
+rural_pop_perc <- river_data$V5
+density <- river_data$V6
+broadleaf_area <- river_data$V7
+needleleaf_area <- river_data$V8
+mixleaf_area <- river_data$V9
+bush_area <- river_data$V10
+swamp_area <- river_data$V11
+farm_area <- river_data$V12
+mountain_area <- river_data$V13
+water_area <- river_data$V14
+ice_area <- river_data$V15
+artificial_area <- river_data$V16
+water_runoff <- river_data$V17
+pig_pop <- river_data$V18
+cow_pop <- river_data$V19
+WC_percentage <- river_data$V20
+country <- river_data$V21
+nitrogen <- river_data$V22
+```
+
