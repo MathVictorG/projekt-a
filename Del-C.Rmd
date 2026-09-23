@@ -1,0 +1,238 @@
+---
+title: "Del-C"
+author: "Samuel Carbeskär, et al"
+date: "`r.Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+river_data <- read.csv("din_clean.csv", header=FALSE, skip=1)
+drain_a <- river_data$V2
+pop <- river_data$V3
+urb_pop_per <- river_data$V4
+dens <- river_data$V6
+bleaf_a <- river_data$V7
+nleaf_a <- river_data$V8
+mleaf_a <- river_data$V9
+bush_a <- river_data$V10
+swamp_a <- river_data$V11
+farm_a <- river_data$V12
+mt_a <- river_data$V13
+water_a <- river_data$V14
+ice_a <- river_data$V15
+artific_area <- river_data$V16
+water_runoff <- river_data$V17
+pig_pop <- river_data$V18
+cow_pop <- river_data$V19
+WC_per <- river_data$V20
+country <- river_data$V21
+N <- river_data$V22
+drain_a_o <- drain_a[country == "RUSSIA"]
+pop_o <- pop[country == "RUSSIA"]
+urb_pop_per_o <- urb_pop_per[country == "RUSSIA"]
+dens_o <- dens[country == "RUSSIA"]
+bleaf_a_o <- bleaf_a[country == "RUSSIA"]
+nleaf_a_o <- nleaf_a[country == "RUSSIA"]
+mleaf_a_o <- mleaf_a[country == "RUSSIA"]
+bush_a_o <- bush_a[country == "RUSSIA"]
+swamp_a_o <- swamp_a[country == "RUSSIA"]
+farm_a_o <- farm_a[country == "RUSSIA"]
+mt_a_o <- mt_a[country == "RUSSIA"]
+water_a_o <- water_a[country == "RUSSIA"]
+ice_a_o <- ice_a[country == "RUSSIA"]
+artific_area_o <- artific_area[country == "RUSSIA"]
+water_runoff_o <- water_runoff[country == "RUSSIA"]
+pig_pop_o <- pig_pop[country == "RUSSIA"]
+cow_pop_o <- cow_pop[country == "RUSSIA"]
+WC_per_o <- WC_per[country == "RUSSIA"]
+N_o <- N[country == "RUSSIA"]
+drain_a_o <- append(drain_a_o, drain_a[country == "POLAND"])
+pop_o <- append(pop_o, pop[country == "POLAND"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "POLAND"])
+dens_o <- append(dens_o, dens[country == "POLAND"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "POLAND"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "POLAND"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "POLAND"])
+bush_a_o <- append(bush_a_o, bush_a[country == "POLAND"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "POLAND"])
+farm_a_o <- append(farm_a_o, farm_a[country == "POLAND"])
+mt_a_o <- append(mt_a_o, mt_a[country == "POLAND"])
+water_a_o <- append(water_a_o, water_a[country == "POLAND"])
+ice_a_o <- append(ice_a_o, ice_a[country == "POLAND"])
+artific_area_o <- append(artific_area_o, artific_area[country == "POLAND"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "POLAND"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "POLAND"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "POLAND"])
+WC_per_o <- append(WC_per_o, WC_per[country == "POLAND"])
+N_o <- append(N_o, N[country == "POLAND"])
+drain_a_s <- drain_a[country == "SWEDEN"]
+pop_s <- pop[country == "SWEDEN"]
+urb_pop_per_s <- urb_pop_per[country == "SWEDEN"]
+dens_s <- dens[country == "SWEDEN"]
+bleaf_a_s <- bleaf_a[country == "SWEDEN"]
+nleaf_a_s <- nleaf_a[country == "SWEDEN"]
+mleaf_a_s <- mleaf_a[country == "SWEDEN"]
+bush_a_s <- bush_a[country == "SWEDEN"]
+swamp_a_s <- swamp_a[country == "SWEDEN"]
+farm_a_s <- farm_a[country == "SWEDEN"]
+mt_a_s <- mt_a[country == "SWEDEN"]
+water_a_s <- water_a[country == "SWEDEN"]
+ice_a_s <- ice_a[country == "SWEDEN"]
+artific_area_s <- artific_area[country == "SWEDEN"]
+water_runoff_s <- water_runoff[country == "SWEDEN"]
+pig_pop_s <- pig_pop[country == "SWEDEN"]
+cow_pop_s <- cow_pop[country == "SWEDEN"]
+WC_per_s <- WC_per[country == "SWEDEN"]
+N_s <- N[country == "SWEDEN"]
+drain_a_f <- drain_a[country == "FINLAND"]
+pop_f <- pop[country == "FINLAND"]
+urb_pop_per_f <- urb_pop_per[country == "FINLAND"]
+dens_f <- dens[country == "FINLAND"]
+bleaf_a_f <- bleaf_a[country == "FINLAND"]
+nleaf_a_f <- nleaf_a[country == "FINLAND"]
+mleaf_a_f <- mleaf_a[country == "FINLAND"]
+bush_a_f <- bush_a[country == "FINLAND"]
+swamp_a_f <- swamp_a[country == "FINLAND"]
+farm_a_f <- farm_a[country == "FINLAND"]
+mt_a_f <- mt_a[country == "FINLAND"]
+water_a_f <- water_a[country == "FINLAND"]
+ice_a_f <- ice_a[country == "FINLAND"]
+artific_area_f <- artific_area[country == "FINLAND"]
+water_runoff_f <- water_runoff[country == "FINLAND"]
+pig_pop_f <- pig_pop[country == "FINLAND"]
+cow_pop_f <- cow_pop[country == "FINLAND"]
+WC_per_f <- WC_per[country == "FINLAND"]
+N_f <- N[country == "FINLAND"]
+drain_a_o <- append(drain_a_o, drain_a[country == "LITHUANIA"])
+pop_o <- append(pop_o, pop[country == "LITHUANIA"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "LITHUANIA"])
+dens_o <- append(dens_o, dens[country == "LITHUANIA"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "LITHUANIA"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "LITHUANIA"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "LITHUANIA"])
+bush_a_o <- append(bush_a_o, bush_a[country == "LITHUANIA"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "LITHUANIA"])
+farm_a_o <- append(farm_a_o, farm_a[country == "LITHUANIA"])
+mt_a_o <- append(mt_a_o, mt_a[country == "LITHUANIA"])
+water_a_o <- append(water_a_o, water_a[country == "LITHUANIA"])
+ice_a_o <- append(ice_a_o, ice_a[country == "LITHUANIA"])
+artific_area_o <- append(artific_area_o, artific_area[country == "LITHUANIA"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "LITHUANIA"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "LITHUANIA"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "LITHUANIA"])
+WC_per_o <- append(WC_per_o, WC_per[country == "LITHUANIA"])
+N_o <- append(N_o, N[country == "LITHUANIA"])
+drain_a_o <- append(drain_a_o, drain_a[country == "LATVIA"])
+pop_o <- append(pop_o, pop[country == "LATVIA"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "LATVIA"])
+dens_o <- append(dens_o, dens[country == "LATVIA"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "LATVIA"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "LATVIA"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "LATVIA"])
+bush_a_o <- append(bush_a_o, bush_a[country == "LATVIA"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "LATVIA"])
+farm_a_o <- append(farm_a_o, farm_a[country == "LATVIA"])
+mt_a_o <- append(mt_a_o, mt_a[country == "LATVIA"])
+water_a_o <- append(water_a_o, water_a[country == "LATVIA"])
+ice_a_o <- append(ice_a_o, ice_a[country == "LATVIA"])
+artific_area_o <- append(artific_area_o, artific_area[country == "LATVIA"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "LATVIA"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "LATVIA"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "LATVIA"])
+WC_per_o <- append(WC_per_o, WC_per[country == "LATVIA"])
+N_o <- append(N_o, N[country == "LATVIA"])
+drain_a_o <- append(drain_a_o, drain_a[country == "ESTONIA"])
+pop_o <- append(pop_o, pop[country == "ESTONIA"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "ESTONIA"])
+dens_o <- append(dens_o, dens[country == "ESTONIA"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "ESTONIA"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "ESTONIA"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "ESTONIA"])
+bush_a_o <- append(bush_a_o, bush_a[country == "ESTONIA"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "ESTONIA"])
+farm_a_o <- append(farm_a_o, farm_a[country == "ESTONIA"])
+mt_a_o <- append(mt_a_o, mt_a[country == "ESTONIA"])
+water_a_o <- append(water_a_o, water_a[country == "ESTONIA"])
+ice_a_o <- append(ice_a_o, ice_a[country == "ESTONIA"])
+artific_area_o <- append(artific_area_o, artific_area[country == "ESTONIA"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "ESTONIA"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "ESTONIA"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "ESTONIA"])
+WC_per_o <- append(WC_per_o, WC_per[country == "ESTONIA"])
+N_o <- append(N_o, N[country == "ESTONIA"])
+drain_a_m <- drain_a[country == "MISSING"]
+pop_m <- pop[country == "MISSING"]
+urb_pop_per_m <- urb_pop_per[country == "MISSING"]
+dens_m <- dens[country == "MISSING"]
+bleaf_a_m <- bleaf_a[country == "MISSING"]
+nleaf_a_m <- nleaf_a[country == "MISSING"]
+mleaf_a_m <- mleaf_a[country == "MISSING"]
+bush_a_m <- bush_a[country == "MISSING"]
+swamp_a_m <- swamp_a[country == "MISSING"]
+farm_a_m <- farm_a[country == "MISSING"]
+mt_a_m <- mt_a[country == "MISSING"]
+water_a_m <- water_a[country == "MISSING"]
+ice_a_m <- ice_a[country == "MISSING"]
+artific_area_m <- artific_area[country == "MISSING"]
+water_runoff_m <- water_runoff[country == "MISSING"]
+pig_pop_m <- pig_pop[country == "MISSING"]
+cow_pop_m <- cow_pop[country == "MISSING"]
+WC_per_m <- WC_per[country == "MISSING"]
+N_m <- N[country == "MISSING"]
+```
+Eliminerade variabler: Index (Duh) och Rural Population Percentage då denna är 
+100% negativt kolinjär med Urban Population Percentage. Country används endast
+för kategorisering.
+
+```{r}
+full_model_o <- lm(N_o ~ drain_a_o + pop_o + dens_o + farm_a_o
+                   + water_runoff_o + pig_pop_o + cow_pop_o + WC_per_o)
+full_model_s <- lm(N_s ~ drain_a_s + pop_s + dens_s + farm_a_s
+                   + water_runoff_s + pig_pop_s + cow_pop_s + WC_per_s)
+full_model_f <- lm(N_f ~ drain_a_f + pop_f + dens_f + farm_a_f
+                   + water_runoff_f + pig_pop_f + cow_pop_f + WC_per_f)
+full_model_m <- lm(N_m ~ drain_a_m + pop_m + dens_m + farm_a_m
+                   + water_runoff_m + pig_pop_m + cow_pop_m + WC_per_m)
+null_model_s <- lm(N_s ~ 1)
+null_model_f <- lm(N_f ~ 1)
+null_model_m <- lm(N_m ~ 1)
+null_model_o <- lm(N_o ~ 1)
+
+```
+Hopslagen data: Poland, Russia och Lithuania hade 2 eller färre datapunkter och
+slogs därmed ihop till Other. Efter vidare undersökning lades även Estonia och Lativa till i denna kategori.
+
+```{r}
+final_model_s <- step(null_model_s, scope = list(lower = formula(null_model_s), upper = formula(full_model_s)), direction = "both")
+final_model_f <- step(null_model_f, scope = list(lower = formula(null_model_f), upper = formula(full_model_f)), direction = "both")
+final_model_m <- step(null_model_m, scope = list(lower = formula(null_model_m), upper = formula(full_model_m)), direction = "both")
+final_model_o <- step(null_model_o, scope = list(lower = formula(null_model_o), upper = formula(full_model_o)), direction = "both")
+summary(final_model_s)
+plot(final_model_s)
+summary(final_model_f)
+plot(final_model_f)
+summary(final_model_m)
+plot(final_model_m)
+summary(final_model_o)
+plot(final_model_o)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
