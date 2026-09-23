@@ -10,26 +10,26 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ```{r}
 river_data <- read.csv("din_clean.csv", header=FALSE, skip=1)
-drain_a <- river_data$V2
-pop <- river_data$V3
+drain_a <- log(river_data$V2)
+pop <- log(river_data$V3)
 urb_pop_per <- river_data$V4
-dens <- river_data$V6
+dens <- log(river_data$V6)
 bleaf_a <- river_data$V7
 nleaf_a <- river_data$V8
 mleaf_a <- river_data$V9
 bush_a <- river_data$V10
 swamp_a <- river_data$V11
-farm_a <- river_data$V12
+farm_a <- log(river_data$V12+1)
 mt_a <- river_data$V13
 water_a <- river_data$V14
 ice_a <- river_data$V15
 artific_area <- river_data$V16
 water_runoff <- river_data$V17
-pig_pop <- river_data$V18
-cow_pop <- river_data$V19
+pig_pop <- log(river_data$V18+1)
+cow_pop <- log(river_data$V19+1)
 WC_per <- river_data$V20
 country <- river_data$V21
-N <- river_data$V22
+N <- log(river_data$V22)
 drain_a_o <- drain_a[country == "RUSSIA"]
 pop_o <- pop[country == "RUSSIA"]
 urb_pop_per_o <- urb_pop_per[country == "RUSSIA"]
@@ -219,20 +219,3 @@ plot(final_model_m)
 summary(final_model_o)
 plot(final_model_o)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
