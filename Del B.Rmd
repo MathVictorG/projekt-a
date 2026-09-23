@@ -1,0 +1,429 @@
+---
+title: "Del B"
+author: "Adam"
+date: "2026-09-23"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-data, include=FALSE}
+din <- read.csv("A8_baltic_DIN.csv" , stringsAsFactors = TRUE)
+
+din$Land <- as.factor(din$x20)
+din$Land[din$Land == "MISSING"] <- NA
+
+# Skapa loggade variabler
+din$log_y   <- log(din$y)
+din$log_x1  <- log(din$x1)
+din$log_x2  <- log(din$x2)
+din$log_x5  <- log(din$x5)
+din$log_x11 <- log(din$x11 + 1)
+din$log_x17 <- log(din$x17 + 1)
+din$log_x18 <- log(din$x18 + 1)
+
+
+dim(din)
+summary(din)
+
+dim(din)          # 105 rader, 22 kolumner
+str(din)          # datatyper
+head(din)         # första raderna
+
+
+```
+
+
+
+
+
+```{r}
+# Sammanfattning
+summary(din$y)
+sd(din$y)
+
+# Histogram – originalskala
+hist(din$y, breaks = 30,
+     main = "Fördelning av DIN",
+     xlab = "DIN (kg)", col = "lightblue")
+
+# Boxplot
+boxplot(din$y, main = "Boxplot DIN", ylab = "DIN (kg)", col = "lightblue")
+
+# Histogram – log-skala (viktigt att kolla!)
+hist(log(din$y), breaks = 30,
+     main = "Fördelning av log(DIN)",
+     xlab = "log(DIN)", col = "lightgreen")
+```
+När vi undersöker responsvaiablen så ser vi att DIN är extremt högersned och att log(DIN) är approximativt symmetrisk så den är bättre för regression. Vi använder därför log(y) som responsvariabel i alla modeller.
+
+
+```{r}
+par(mfrow = c(2, 2))
+
+hist(din$x1, breaks = 30, main = "Avrinningsområde (x1)",
+     xlab = "ha", col = "lightblue")
+hist(din$x2, breaks = 30, main = "Befolkning (x2)",
+     xlab = "antal", col = "lightblue")
+hist(din$x5, breaks = 30, main = "Befolkningstäthet (x5)",
+     xlab = "per km2", col = "lightblue")
+hist(din$x11, breaks = 30, main = "Jordbruksmark (x11)",
+     xlab = "ha", col = "lightblue")
+
+par(mfrow = c(1, 1))
+```
+```{r}
+par(mfrow = c(2, 2))
+
+hist(din$x16, breaks = 30, main = "Avrinning (x16)",
+     xlab = "mm/år", col = "lightblue")
+hist(din$x17, breaks = 30, main = "Svin (x17)",
+     xlab = "antal", col = "lightblue")
+hist(din$x18, breaks = 30, main = "Nötkreatur (x18)",
+     xlab = "antal", col = "lightblue")
+hist(din$x19, breaks = 30, main = "Reningsverk (x19)",
+     xlab = "%", col = "lightblue")
+
+par(mfrow = c(1, 1))
+```
+
+Ser att alla förutom x16 och x19 behöver logtransformeras.
+x16 ingen transformering
+x19 använd som numerisk nämn kluster.
+
+
+
+```{r}
+# STEG 5: Bivariata scatterplots
+
+par(mfrow = c(2, 4))
+
+# Starka kandidater (log-log)
+plot(din$x11, din$y, log = "xy",
+     main = "DIN vs Jordbruksmark",
+     xlab = "Jordbruksmark (ha)", ylab = "DIN (kg)",
+     pch = 19, col = "darkblue")
+
+plot(din$x2, din$y, log = "xy",
+     main = "DIN vs Befolkning",
+     xlab = "Befolkning", ylab = "DIN (kg)",
+     pch = 19, col = "darkred")
+
+plot(din$x1, din$y, log = "xy",
+     main = "DIN vs Avrinningsområde",
+     xlab = "Area (ha)", ylab = "DIN (kg)",
+     pch = 19, col = "darkgreen")
+
+plot(din$x17, din$y, log = "xy",
+     main = "DIN vs Svin",
+     xlab = "Antal svin", ylab = "DIN (kg)",
+     pch = 19, col = "orange")
+
+plot(din$x18, din$y, log = "xy",
+     main = "DIN vs Nötkreatur",
+     xlab = "Antal nötkreatur", ylab = "DIN (kg)",
+     pch = 19, col = "brown")
+
+plot(din$x5, din$y, log = "xy",
+     main = "DIN vs Befolkningstäthet",
+     xlab = "Per km2", ylab = "DIN (kg)",
+     pch = 19, col = "purple")
+
+# Avrinning
+plot(din$x16, din$y,
+     main = "DIN vs Avrinning",
+     xlab = "Avrinning (mm/år)", ylab = "DIN (kg)",
+     pch = 19, col = "darkgreen")
+
+# Reningsverk
+plot(din$x19, din$y,
+     main = "DIN vs Reningsverk",
+     xlab = "Andel reningsverk (%)", ylab = "DIN (kg)",
+     pch = 19, col = "purple")
+
+par(mfrow = c(1, 1))
+```
+
+
+
+log(x11) är en stark prediktor för log(y).
+Ta med i modellen. Detta är troligen den enskilt viktigaste variabeln.
+Notera: en punkt längst ner till vänster (låg jordbruksmark, låg DIN) kan vara en outlier – kolla upp om den påverkar mycket.
+
+log(x2) är en stark prediktor för log(y).
+Ta med i modellen.
+Varning: Befolkning och jordbruksmark är ofta korrelerade (båda är stora i tätbefolkade jordbruksområden). Multikollinearitet kan bli ett problem – kolla VIF i modellen.
+
+x16 (avrinning) är ingen stark prediktor ensam.
+Överväg att utesluta – eller behåll som kontrollvariabel och se om den blir signifikant i multipel regression.
+
+x19 (reningsverk) är ingen stark prediktor i sin nuvarande form. 
+Uteslut och nämn i rapporten att variabeln hade för liten variation/kluster för att ge ett tydligt samband.
+
+
+```{r}
+# Här gör jag korrelationsanalys för att se vilka variabler som korrelerar. Variabler med hög korrelation (t.ex. |r| > 0,7) är kandidater för modellen. Om två prediktorer korrelerar starkt med varandra → multikollinearitet (nämn för B)
+
+# Numeriska variabler
+num_vars <- din[, sapply(din, is.numeric)]
+num_vars$id <- NULL
+
+# Pearson-korrelation med y
+cor_y <- cor(num_vars$y, num_vars, use = "pairwise.complete.obs")
+sort(round(cor_y, 2), decreasing = TRUE)
+
+# Spearman (rangkorrelation) – robust mot snedfördelning
+cor_y_spear <- cor(num_vars$y, num_vars,
+                   method = "spearman",
+                   use = "pairwise.complete.obs")
+sort(round(cor_y_spear, 2), decreasing = TRUE)
+
+```
+```{r}
+# Korrelationsmatris för ultvalda variabler.
+vars_int <- c("y", "x1", "x2", "x5", "x11", "x16", "x17", "x18", "x19")
+cor_mat <- cor(din[, vars_int], use = "pairwise.complete.obs")
+round(cor_mat, 2)
+```
+Sammanfattning på EDA delen:
+
+Log(y) används då DIN är starkt högersned.
+
+Starka predktatorer: Log(x11)(jordbruk), log(x2)(befolkning), log(x1)(area)
+
+Måttliga predikatorer: log(x17), log(x18), log(x5)
+
+Svaga predikatorer:
+x16 och x19 visar svag negativ korrelation och scatteroplotts bekräftar att inget tydligt linjärt samband finns. Dessa variabler bekräftar vi som svaga predikatorer och utelämnas från de fortsatta modellerna.
+
+Misstänkt multikoliniearitet: Ser i matrisen att log(x2) och log(x5) starkt korrelerade på r=0.85 vi väljer en föreslår log(x2) eftersom den är mer specifik för kvävetillförsel. log(x1) och log(x11) är på gränsen med r=0.8 så vi behåller log(x11) av samma anledning. log(x17) och log(x18) är under gränsen med r=0.75 så vi kan överväga att välja en eller slå ihop.
+
+
+```{r}
+# Boxplott per land
+# Antal per land
+table(din$Land, useNA = "ifany")
+
+# Boxplot av log(DIN) per land
+boxplot(log(y) ~ Land, data = din, las = 2,
+        main = "log(DIN) per land",
+        ylab = "log(DIN)", col = "lightblue")
+```
+Slutsatser av boxplottarna: 
+
+DIN varierar mycket mellan länder, Sverige och finland dominerar datamänden (flest obs), vissa länder har för få obs för egna modeller, extremvärden finns i vissa länder som kan påverka modeller.
+
+```{r}
+# Spara som RDS (behåller faktorer och struktur)
+saveRDS(din, file = "din_clean.rds")
+
+write.csv(din, file = "din_clean.csv", row.names = FALSE)
+
+
+```
+
+
+# Del B: En global regressionsmodell
+
+Vi börjar att ladda våra paket samt läsa in datan
+
+```{r}
+
+library(car)      # vif()
+library(lmtest)   # bptest(), dwtest()
+library(MASS)     # step()
+
+din <- read.csv("din_clean.csv", stringsAsFactors = TRUE)
+
+```
+
+Sedan gör vi en full kandidatmodell och kollar om log_x2/log_x5 eller log_x1/log_x11 har VIF > 5.
+
+```{r}
+
+mod_step <- step(mod_full, direction = "backward", trace = TRUE)
+summary(mod_step)
+
+
+
+```
+
+
+Vi ser att vi kan ta bort x19 som är svag vilket vi ser i step. Men kan behålla x16 då den är starkt signifikant i den multipla modellen trots att den har en svag univariat korrelation
+
+```{r}
+
+mod2 <- update(mod_full, . ~ . - x19)
+summary(mod2)
+vif(mod2)
+
+```
+
+Vi ser nu att log_x1, logx_2 och log_x5 har extremt hög multikollinearitet och är nästan perfekt linjärt beroende. Vilket bekräftar teorin att x5 = x2/x1 * konstant, så log_x5 = log_x2 - log_x1 + konstant. Så vi behöver ta bort en av dessa tre, det mest naturliga alternativet är x_5.
+
+Vi ser också att variablerna för djuren är höga, med VIF på 62.6 för log_x17 och 147.2 för log_x18 vilket är myket högre än 5-10 VIF. Detta trots en korrelation på r=0.75 som vi såg tidigare. Vilket kan göra det bra att slå ihop dessa. 
+
+Vi ser också att log_x11 är väldigt förhöjd, men det kan också bero på att den delar variation med trion vi såg ovan (x1,x2 och x5)
+
+Sist ser vi att x16 har ett ganska låg VIF på 1.12 och den kan då stanna kvar i modellen som en oberoende förklaringsvariabel, vilket vi också såg i step resultatet. 
+
+Nu kollar vi hur det ser ut när vi tar bort log_x5
+
+```{r}
+
+mod3 <- update(mod2, . ~ . - log_x5)
+summary(mod3)
+vif(mod3)
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+
+
+```
+
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+
+
+```
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+
+
+```
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+
+
+```
