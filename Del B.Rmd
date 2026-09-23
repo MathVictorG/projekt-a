@@ -241,6 +241,17 @@ din <- read.csv("din_clean.csv", stringsAsFactors = TRUE)
 
 ```
 
+```{r}
+
+mod_full <- lm(log_y ~ log_x1 + log_x2 + log_x5 + log_x11 +
+                       log_x17 + log_x18 + x16 + x19,
+                data = din)
+
+summary(mod_full)
+vif(mod_full)
+
+```
+
 Sedan gör vi en full kandidatmodell och kollar om log_x2/log_x5 eller log_x1/log_x11 har VIF > 5.
 
 ```{r}
@@ -282,11 +293,18 @@ vif(mod3)
 
 ```
 
+Nu kan vi se att VIFen för log_x1 och log_x2 är mycket rimligare nivåer med 2.7 respektive 6.7. Så det verkar vart beroendet mellan log_x1, log_x2 och x_5 som var problemet. Inte mellan log_x1 och log_x2 var för sig.
+
+Men när den extrema kollineriteten är borta ser vi att log_x1 har p = 0.498, så avrinningområdets storlek tillför inget mer än det andra visar redan visar. Så vi kan ta bort den. 
+
+Log_x11, log_x17 och log_x18 är högt kollineära med VIF 33, 62 och 144. Vilket inte är orimligt då jordbruksmark, svin och nötkreatur hänger ihop geografiskt. Vilket ger ett eget kollinjärt kluster. 
 
 
 ```{r}
 
-
+mod4 <- update(mod3, . ~ . - log_x1)
+summary(mod4)
+vif(mod4)
 
 
 
