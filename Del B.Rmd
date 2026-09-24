@@ -387,7 +387,6 @@ När vi kollar på Breusch-pagan med p =0.97, ser vi ingen heteroskedasticet. De
 
 Nu kollar vi på Shapiro-Wilk med p =0.485 där residualerna är normarfördelarna. De avikkande svansarna från punkterna 16, 68 och 78 är inte tillräckligt extrema för att ifrågasätta normalitetsantagandet.
 
-
 När vi ser cook's distance är det 8 punkter som överstiger linjen 4/n, men detta betyder inte att dessa punkter är problematiska, då det är en hård gräns som flaggar ungefär 5-10% av observationerna. Men för att behöva undersöka vidare ifall de är problematiska kräver att D > 0.5. Vilket ingen punkt kommer nära.
 
 För raderna har vi att 68 (Finland) och 78 (Sverige) har stora förklaringsvariabler men ovanligt lågt DIN, vilket ger de stora negativa residualerna, detta skulle kunna bero på lokala faktorer som gödselhantering eller våtmarker. Rad 16 saknar Land (NA), oproblematiskt för modellen men bra att känna till.
@@ -395,80 +394,44 @@ För raderna har vi att 68 (Finland) och 78 (Sverige) har stora förklaringsvari
 Modellen verkar klara alla antaganden om linjäritet, homoskedasticitet, normalitet och inga extremt inflytelserika punkter. Som gör att vi behöver ta bort observationer.
 
 
+```{r}
+
+# Ta bort de punkter som formellt flaggades av 4/n-regeln och se om
+# koefficienterna ändras nämnvärt
+influential <- c(2, 10, 18, 68, 71, 73, 87, 97)
+
+mod_sens <- lm(formula(mod_final), data = din[-influential, ])
+
+cbind(original = round(coef(mod_final), 4),
+      utan_infl = round(coef(mod_sens), 4))
+
+summary(mod_sens)$adj.r.squared
+summary(mod_final)$adj.r.squared
+
+
+
+```
+
+Vi ser att alla koefficienter behåller samma tecken, och ligger inom ett rimligt avstånd från originalvärdena, Det är ingen dramatisk förändring heller, tex att log_x11 går från 0.89 till 1.02. Så modellen påverkas inte av några enskilda observationer.
+
+Vårt justerade R^2 ökar marginellt från 0.923 till 0.932 utan flaggade punkter, så våra punkter påverkar lite mer brus, men inget allvarligt.
+
+Modellen är nu väldigt robust, och vi behåller alla 105 observationer i slutmodellen, eftersom ingen enskild punkt har ett stå stort inflytande. Och vår känslighetsanalys inte hänger på ett fåtal punkter.
+
 
 ```{r}
 
+summary(mod_final)
+confint(mod_final)
+anova(mod_final)
 
+summary(mod_final)$r.squared
+summary(mod_final)$adj.r.squared
 
 
 
 ```
 
 
+Vi ser att log_x17 är icke-signifikant i anova med p = 0.44 men i signifikant i t-testet med p = 0.004. Denna skillnad beror på variabelordningen i anova kombinerat med kollineariteten mot log_x18. Så vi utgår från t-testens partiella effekter i vår tolkning.
 
-```{r}
-
-
-
-
-
-```
-
-
-
-```{r}
-
-
-
-
-
-```
-
-
-
-
-```{r}
-
-
-
-
-
-```
-```{r}
-
-
-
-
-
-```
-
-
-
-```{r}
-
-
-
-
-
-```
-
-
-
-```{r}
-
-
-
-
-
-```
-
-
-
-
-```{r}
-
-
-
-
-
-```
