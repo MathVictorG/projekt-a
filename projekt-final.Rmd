@@ -1,0 +1,789 @@
+---
+title: "Projekt_final"
+author: "Adam Håkansson, Leon Asplund, Samuel Carbeskär & Victor Groth"
+date: "2026-09-24"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-data, include=FALSE}
+din <- read.csv("A8_baltic_DIN.csv" , stringsAsFactors = TRUE)
+
+din$Land <- as.factor(din$x20)
+din$Land[din$Land == "MISSING"] <- NA
+
+# Skapa loggade variabler
+din$log_y   <- log(din$y)
+din$log_x1  <- log(din$x1)
+din$log_x2  <- log(din$x2)
+din$log_x5  <- log(din$x5)
+din$log_x11 <- log(din$x11 + 1)
+din$log_x17 <- log(din$x17 + 1)
+din$log_x18 <- log(din$x18 + 1)
+
+
+dim(din)
+summary(din)
+
+dim(din)          # 105 rader, 22 kolumner
+str(din)          # datatyper
+head(din)         # första raderna
+
+
+```
+
+
+
+
+
+```{r}
+# Sammanfattning
+summary(din$y)
+sd(din$y)
+
+# Histogram – originalskala
+hist(din$y, breaks = 30,
+     main = "Fördelning av DIN",
+     xlab = "DIN (kg)", col = "lightblue")
+
+# Boxplot
+boxplot(din$y, main = "Boxplot DIN", ylab = "DIN (kg)", col = "lightblue")
+
+# Histogram – log-skala (viktigt att kolla!)
+hist(log(din$y), breaks = 30,
+     main = "Fördelning av log(DIN)",
+     xlab = "log(DIN)", col = "lightgreen")
+```
+När vi undersöker responsvaiablen så ser vi att DIN är extremt högersned och att log(DIN) är approximativt symmetrisk så den är bättre för regression. Vi använder därför log(y) som responsvariabel i alla modeller.
+
+
+```{r}
+par(mfrow = c(2, 2))
+
+hist(din$x1, breaks = 30, main = "Avrinningsområde (x1)",
+     xlab = "ha", col = "lightblue")
+hist(din$x2, breaks = 30, main = "Befolkning (x2)",
+     xlab = "antal", col = "lightblue")
+hist(din$x5, breaks = 30, main = "Befolkningstäthet (x5)",
+     xlab = "per km2", col = "lightblue")
+hist(din$x11, breaks = 30, main = "Jordbruksmark (x11)",
+     xlab = "ha", col = "lightblue")
+
+par(mfrow = c(1, 1))
+```
+```{r}
+par(mfrow = c(2, 2))
+
+hist(din$x16, breaks = 30, main = "Avrinning (x16)",
+     xlab = "mm/år", col = "lightblue")
+hist(din$x17, breaks = 30, main = "Svin (x17)",
+     xlab = "antal", col = "lightblue")
+hist(din$x18, breaks = 30, main = "Nötkreatur (x18)",
+     xlab = "antal", col = "lightblue")
+hist(din$x19, breaks = 30, main = "Reningsverk (x19)",
+     xlab = "%", col = "lightblue")
+
+par(mfrow = c(1, 1))
+```
+
+Ser att alla förutom x16 och x19 behöver logtransformeras.
+x16 ingen transformering
+x19 använd som numerisk nämn kluster.
+
+
+
+```{r}
+# STEG 5: Bivariata scatterplots
+
+par(mfrow = c(2, 4))
+
+# Starka kandidater (log-log)
+plot(din$x11, din$y, log = "xy",
+     main = "DIN vs Jordbruksmark",
+     xlab = "Jordbruksmark (ha)", ylab = "DIN (kg)",
+     pch = 19, col = "darkblue")
+
+plot(din$x2, din$y, log = "xy",
+     main = "DIN vs Befolkning",
+     xlab = "Befolkning", ylab = "DIN (kg)",
+     pch = 19, col = "darkred")
+
+plot(din$x1, din$y, log = "xy",
+     main = "DIN vs Avrinningsområde",
+     xlab = "Area (ha)", ylab = "DIN (kg)",
+     pch = 19, col = "darkgreen")
+
+plot(din$x17, din$y, log = "xy",
+     main = "DIN vs Svin",
+     xlab = "Antal svin", ylab = "DIN (kg)",
+     pch = 19, col = "orange")
+
+plot(din$x18, din$y, log = "xy",
+     main = "DIN vs Nötkreatur",
+     xlab = "Antal nötkreatur", ylab = "DIN (kg)",
+     pch = 19, col = "brown")
+
+plot(din$x5, din$y, log = "xy",
+     main = "DIN vs Befolkningstäthet",
+     xlab = "Per km2", ylab = "DIN (kg)",
+     pch = 19, col = "purple")
+
+# Avrinning
+plot(din$x16, din$y,
+     main = "DIN vs Avrinning",
+     xlab = "Avrinning (mm/år)", ylab = "DIN (kg)",
+     pch = 19, col = "darkgreen")
+
+# Reningsverk
+plot(din$x19, din$y,
+     main = "DIN vs Reningsverk",
+     xlab = "Andel reningsverk (%)", ylab = "DIN (kg)",
+     pch = 19, col = "purple")
+
+par(mfrow = c(1, 1))
+```
+
+
+
+log(x11) är en stark prediktor för log(y).
+Ta med i modellen. Detta är troligen den enskilt viktigaste variabeln.
+Notera: en punkt längst ner till vänster (låg jordbruksmark, låg DIN) kan vara en outlier – kolla upp om den påverkar mycket.
+
+log(x2) är en stark prediktor för log(y).
+Ta med i modellen.
+Varning: Befolkning och jordbruksmark är ofta korrelerade (båda är stora i tätbefolkade jordbruksområden). Multikollinearitet kan bli ett problem – kolla VIF i modellen.
+
+x16 (avrinning) är ingen stark prediktor ensam.
+Överväg att utesluta – eller behåll som kontrollvariabel och se om den blir signifikant i multipel regression.
+
+x19 (reningsverk) är ingen stark prediktor i sin nuvarande form. 
+Uteslut och nämn i rapporten att variabeln hade för liten variation/kluster för att ge ett tydligt samband.
+
+
+```{r}
+# Här gör jag korrelationsanalys för att se vilka variabler som korrelerar. Variabler med hög korrelation (t.ex. |r| > 0,7) är kandidater för modellen. Om två prediktorer korrelerar starkt med varandra → multikollinearitet (nämn för B)
+
+# Numeriska variabler
+num_vars <- din[, sapply(din, is.numeric)]
+num_vars$id <- NULL
+
+# Pearson-korrelation med y
+cor_y <- cor(num_vars$y, num_vars, use = "pairwise.complete.obs")
+sort(round(cor_y, 2), decreasing = TRUE)
+
+# Spearman (rangkorrelation) – robust mot snedfördelning
+cor_y_spear <- cor(num_vars$y, num_vars,
+                   method = "spearman",
+                   use = "pairwise.complete.obs")
+sort(round(cor_y_spear, 2), decreasing = TRUE)
+
+```
+```{r}
+# Korrelationsmatris för ultvalda variabler.
+vars_int <- c("y", "x1", "x2", "x5", "x11", "x16", "x17", "x18", "x19")
+cor_mat <- cor(din[, vars_int], use = "pairwise.complete.obs")
+round(cor_mat, 2)
+```
+Sammanfattning på EDA delen:
+
+Log(y) används då DIN är starkt högersned.
+
+Starka predktatorer: Log(x11)(jordbruk), log(x2)(befolkning), log(x1)(area)
+
+Måttliga predikatorer: log(x17), log(x18), log(x5)
+
+Svaga predikatorer:
+x16 och x19 visar svag negativ korrelation och scatteroplotts bekräftar att inget tydligt linjärt samband finns. Dessa variabler bekräftar vi som svaga predikatorer och utelämnas från de fortsatta modellerna.
+
+Misstänkt multikoliniearitet: Ser i matrisen att log(x2) och log(x5) starkt korrelerade på r=0.85 vi väljer en föreslår log(x2) eftersom den är mer specifik för kvävetillförsel. log(x1) och log(x11) är på gränsen med r=0.8 så vi behåller log(x11) av samma anledning. log(x17) och log(x18) är under gränsen med r=0.75 så vi kan överväga att välja en eller slå ihop.
+
+
+```{r}
+# Boxplott per land
+# Antal per land
+table(din$Land, useNA = "ifany")
+
+# Boxplot av log(DIN) per land
+boxplot(log(y) ~ Land, data = din, las = 2,
+        main = "log(DIN) per land",
+        ylab = "log(DIN)", col = "lightblue")
+```
+Slutsatser av boxplottarna: 
+
+DIN varierar mycket mellan länder, Sverige och finland dominerar datamänden (flest obs), vissa länder har för få obs för egna modeller, extremvärden finns i vissa länder som kan påverka modeller.
+
+```{r}
+# Spara som RDS (behåller faktorer och struktur)
+dir.create("output", showWarnings = FALSE)
+
+saveRDS(din, file = "output/din_clean.rds")
+
+write.csv(din, file = "output/din_clean.csv", row.names = FALSE)
+```
+
+
+# Del B: En global regressionsmodell
+
+Vi börjar att ladda våra paket samt läsa in datan
+
+```{r}
+
+library(car)      # vif()
+library(lmtest)   # bptest(), dwtest()
+library(MASS)     # step()
+
+din <- read.csv("din_clean.csv", stringsAsFactors = TRUE)
+
+```
+
+```{r}
+
+mod_full <- lm(log_y ~ log_x1 + log_x2 + log_x5 + log_x11 +
+                       log_x17 + log_x18 + x16 + x19,
+                data = din)
+
+summary(mod_full)
+vif(mod_full)
+
+```
+
+Sedan gör vi en full kandidatmodell och kollar om log_x2/log_x5 eller log_x1/log_x11 har VIF > 5.
+
+```{r}
+
+mod_step <- step(mod_full, direction = "backward", trace = TRUE)
+summary(mod_step)
+
+
+
+```
+
+
+Vi ser att vi kan ta bort x19 som är svag vilket vi ser i step. Men kan behålla x16 då den är starkt signifikant i den multipla modellen trots att den har en svag univariat korrelation
+
+```{r}
+
+mod2 <- update(mod_full, . ~ . - x19)
+summary(mod2)
+vif(mod2)
+
+```
+
+Vi ser nu att log_x1, logx_2 och log_x5 har extremt hög multikollinearitet och är nästan perfekt linjärt beroende. Vilket bekräftar teorin att x5 = x2/x1 * konstant, så log_x5 = log_x2 - log_x1 + konstant. Så vi behöver ta bort en av dessa tre, det mest naturliga alternativet är x_5.
+
+Vi ser också att variablerna för djuren är höga, med VIF på 62.6 för log_x17 och 147.2 för log_x18 vilket är myket högre än 5-10 VIF. Detta trots en korrelation på r=0.75 som vi såg tidigare. Vilket kan göra det bra att slå ihop dessa. 
+
+Vi ser också att log_x11 är väldigt förhöjd, men det kan också bero på att den delar variation med trion vi såg ovan (x1,x2 och x5)
+
+Sist ser vi att x16 har ett ganska låg VIF på 1.12 och den kan då stanna kvar i modellen som en oberoende förklaringsvariabel, vilket vi också såg i step resultatet. 
+
+Nu kollar vi hur det ser ut när vi tar bort log_x5
+
+```{r}
+
+mod3 <- update(mod2, . ~ . - log_x5)
+summary(mod3)
+vif(mod3)
+
+
+```
+
+Nu kan vi se att VIFen för log_x1 och log_x2 är mycket rimligare nivåer med 2.7 respektive 6.7. Så det verkar vart beroendet mellan log_x1, log_x2 och x_5 som var problemet. Inte mellan log_x1 och log_x2 var för sig.
+
+Men när den extrema kollineriteten är borta ser vi att log_x1 har p = 0.498, så avrinningområdets storlek tillför inget mer än det andra visar redan visar. Så vi kan ta bort den. 
+
+Log_x11, log_x17 och log_x18 är högt kollineära med VIF 33, 62 och 144. Vilket inte är orimligt då jordbruksmark, svin och nötkreatur hänger ihop geografiskt. 
+
+
+```{r}
+
+mod4 <- update(mod3, . ~ . - log_x1)
+summary(mod4)
+vif(mod4)
+
+
+
+```
+Nu ser vi att alla variablerna är signifikanta men det är fortfarande en hög VIF på x11,x17 och x18. Vi testar att göra en sammanslagnning av dessa tre, och se om det hjälper.
+
+
+```{r}
+
+din$log_djur <- log(din$x17 + din$x18 + 1)
+
+mod5 <- update(mod4, . ~ . - log_x17 - log_x18 + log_djur)
+summary(mod5)
+vif(mod5)
+
+
+```
+Vi ser att log_djur inte är signifikant då p = 0.45, trots at log_x17 och log_x18 var starkt signifikanta under mod4. Vilket tyder på en suppressoreffekt.
+
+Vi har att VIF sjönk men adj R^2 föll. Så vi går tillbaka till mod4 där vi hade x17 och x18 separata för vår slutmodell. 
+
+Den höga VIFen är ett motiverat undantag, och vi behållre dem för att de fångar en reel kontrast som samanslagningen inte visade. 
+
+Då använder vi alltså mod4 som vår slutgiltiga bas för att se plottarna.
+
+```{r}
+
+mod_final <- mod4
+summary(mod_final)
+vif(mod_final)
+
+
+```
+
+```{r}
+
+
+par(mfrow = c(1, 2))
+plot(mod_final)
+par(mfrow = c(1, 1))
+
+
+
+```
+
+När vi kikar på den första som visar residuals vs fitted är den röda linjen nästan helt platt utan större krökning, förutom i början. Så linjäritetsantagandet verkar kvarstå.
+
+I den andra så är observationerna runt mittenlinjen, men avviker lite i svansarna. Vilket är från punkterna 78 i nedre, och 16 samt 86 i övre. 
+
+Vi ser att den röda linjen lutar svagt nedåt när vi kollar på den tredje alltså att residualspridningen minskar något vid högre fitted values, vilket kan tyda på en mild heteroskedastitet. Det är samma punkter som sticker ut igen.
+
+När vi kollar på residuals vs leverage ser vi att ingen punkt ligger nära Cook's distance-konturerna (0,5), inte ens de med förhöjd leverage runt 0,15–0,2. Så även om 68/16/78 sticker ut med stora residualer är de inte inflytelserika i statistisk mening — de driver inte modellen i någon dramatisk riktning.
+
+
+Modellen är godkänd på det stora hela, ingen anledning att kasta ut observationer bara för att de har stora residualer, eftersom Cook's distance visar att de inte förvränger koefficienterna. De tre punkterna är dock värda att titta närmare på för att förstå varför de avviker.
+
+
+Sedan gör vi några test som komplement till plottarna, och tittar närmare på de avvikande punkterna.
+
+```{r}
+
+
+# Formella tester som komplement till plottarna
+bptest(mod_final)
+shapiro.test(resid(mod_final))
+
+# Titta närmare på de återkommande avvikande punkterna
+din[c(68, 16, 78), c("id", "x2", "x11", "x17", "x18", "x16", "y", "Land")]
+
+# Kvantitativ koll av Cook's distance (bekräftar det leverage-plotten visade)
+cooksd <- cooks.distance(mod_final)
+plot(cooksd, type = "h", main = "Cook's distance")
+abline(h = 4/nrow(din), col = "red", lty = 2)
+which(cooksd > 4/nrow(din))
+
+
+```
+
+När vi kollar på Breusch-pagan med p =0.97, ser vi ingen heteroskedasticet. Den svaga lutningen i Scalelocation plotten var bara ett visuellt brus, inte ett statistiskt problem.
+
+Nu kollar vi på Shapiro-Wilk med p =0.485 där residualerna är normarfördelarna. De avikkande svansarna från punkterna 16, 68 och 78 är inte tillräckligt extrema för att ifrågasätta normalitetsantagandet.
+
+När vi ser cook's distance är det 8 punkter som överstiger linjen 4/n, men detta betyder inte att dessa punkter är problematiska, då det är en hård gräns som flaggar ungefär 5-10% av observationerna. Men för att behöva undersöka vidare ifall de är problematiska kräver att D > 0.5. Vilket ingen punkt kommer nära.
+
+För raderna har vi att 68 (Finland) och 78 (Sverige) har stora förklaringsvariabler men ovanligt lågt DIN, vilket ger de stora negativa residualerna, detta skulle kunna bero på lokala faktorer som gödselhantering eller våtmarker. Rad 16 saknar Land (NA), oproblematiskt för modellen men bra att känna till.
+
+Modellen verkar klara alla antaganden om linjäritet, homoskedasticitet, normalitet och inga extremt inflytelserika punkter. Som gör att vi behöver ta bort observationer.
+
+
+```{r}
+
+# Ta bort de punkter som formellt flaggades av 4/n-regeln och se om
+# koefficienterna ändras nämnvärt
+influential <- c(2, 10, 18, 68, 71, 73, 87, 97)
+
+mod_sens <- lm(formula(mod_final), data = din[-influential, ])
+
+cbind(original = round(coef(mod_final), 4),
+      utan_infl = round(coef(mod_sens), 4))
+
+summary(mod_sens)$adj.r.squared
+summary(mod_final)$adj.r.squared
+
+
+
+```
+
+Vi ser att alla koefficienter behåller samma tecken, och ligger inom ett rimligt avstånd från originalvärdena, Det är ingen dramatisk förändring heller, tex att log_x11 går från 0.89 till 1.02. Så modellen påverkas inte av några enskilda observationer.
+
+Vårt justerade R^2 ökar marginellt från 0.923 till 0.932 utan flaggade punkter, så våra punkter påverkar lite mer brus, men inget allvarligt.
+
+Modellen är nu väldigt robust, och vi behåller alla 105 observationer i slutmodellen, eftersom ingen enskild punkt har ett stå stort inflytande. Och vår känslighetsanalys inte hänger på ett fåtal punkter.
+
+
+```{r}
+
+summary(mod_final)
+confint(mod_final)
+anova(mod_final)
+
+summary(mod_final)$r.squared
+summary(mod_final)$adj.r.squared
+
+
+
+```
+
+
+Vi ser att log_x17 är icke-signifikant i anova med p = 0.44 men i signifikant i t-testet med p = 0.004. Denna skillnad beror på variabelordningen i anova kombinerat med kollineariteten mot log_x18. Så vi utgår från t-testens partiella effekter i vår tolkning.
+
+# Del C: Landsspecifika modeller
+
+```{r}
+river_data <- read.csv("din_clean.csv", header=FALSE, skip=1)
+drain_a <- log(river_data$V2)
+pop <- log(river_data$V3)
+urb_pop_per <- river_data$V4
+dens <- log(river_data$V6)
+bleaf_a <- river_data$V7
+nleaf_a <- river_data$V8
+mleaf_a <- river_data$V9
+bush_a <- river_data$V10
+swamp_a <- river_data$V11
+farm_a <- log(river_data$V12+1)
+mt_a <- river_data$V13
+water_a <- river_data$V14
+ice_a <- river_data$V15
+artific_area <- river_data$V16
+water_runoff <- river_data$V17
+pig_pop <- log(river_data$V18+1)
+cow_pop <- log(river_data$V19+1)
+WC_per <- river_data$V20
+country <- river_data$V21
+N <- log(river_data$V22)
+drain_a_o <- drain_a[country == "RUSSIA"]
+pop_o <- pop[country == "RUSSIA"]
+urb_pop_per_o <- urb_pop_per[country == "RUSSIA"]
+dens_o <- dens[country == "RUSSIA"]
+bleaf_a_o <- bleaf_a[country == "RUSSIA"]
+nleaf_a_o <- nleaf_a[country == "RUSSIA"]
+mleaf_a_o <- mleaf_a[country == "RUSSIA"]
+bush_a_o <- bush_a[country == "RUSSIA"]
+swamp_a_o <- swamp_a[country == "RUSSIA"]
+farm_a_o <- farm_a[country == "RUSSIA"]
+mt_a_o <- mt_a[country == "RUSSIA"]
+water_a_o <- water_a[country == "RUSSIA"]
+ice_a_o <- ice_a[country == "RUSSIA"]
+artific_area_o <- artific_area[country == "RUSSIA"]
+water_runoff_o <- water_runoff[country == "RUSSIA"]
+pig_pop_o <- pig_pop[country == "RUSSIA"]
+cow_pop_o <- cow_pop[country == "RUSSIA"]
+WC_per_o <- WC_per[country == "RUSSIA"]
+N_o <- N[country == "RUSSIA"]
+drain_a_o <- append(drain_a_o, drain_a[country == "POLAND"])
+pop_o <- append(pop_o, pop[country == "POLAND"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "POLAND"])
+dens_o <- append(dens_o, dens[country == "POLAND"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "POLAND"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "POLAND"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "POLAND"])
+bush_a_o <- append(bush_a_o, bush_a[country == "POLAND"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "POLAND"])
+farm_a_o <- append(farm_a_o, farm_a[country == "POLAND"])
+mt_a_o <- append(mt_a_o, mt_a[country == "POLAND"])
+water_a_o <- append(water_a_o, water_a[country == "POLAND"])
+ice_a_o <- append(ice_a_o, ice_a[country == "POLAND"])
+artific_area_o <- append(artific_area_o, artific_area[country == "POLAND"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "POLAND"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "POLAND"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "POLAND"])
+WC_per_o <- append(WC_per_o, WC_per[country == "POLAND"])
+N_o <- append(N_o, N[country == "POLAND"])
+drain_a_s <- drain_a[country == "SWEDEN"]
+pop_s <- pop[country == "SWEDEN"]
+urb_pop_per_s <- urb_pop_per[country == "SWEDEN"]
+dens_s <- dens[country == "SWEDEN"]
+bleaf_a_s <- bleaf_a[country == "SWEDEN"]
+nleaf_a_s <- nleaf_a[country == "SWEDEN"]
+mleaf_a_s <- mleaf_a[country == "SWEDEN"]
+bush_a_s <- bush_a[country == "SWEDEN"]
+swamp_a_s <- swamp_a[country == "SWEDEN"]
+farm_a_s <- farm_a[country == "SWEDEN"]
+mt_a_s <- mt_a[country == "SWEDEN"]
+water_a_s <- water_a[country == "SWEDEN"]
+ice_a_s <- ice_a[country == "SWEDEN"]
+artific_area_s <- artific_area[country == "SWEDEN"]
+water_runoff_s <- water_runoff[country == "SWEDEN"]
+pig_pop_s <- pig_pop[country == "SWEDEN"]
+cow_pop_s <- cow_pop[country == "SWEDEN"]
+WC_per_s <- WC_per[country == "SWEDEN"]
+N_s <- N[country == "SWEDEN"]
+drain_a_f <- drain_a[country == "FINLAND"]
+pop_f <- pop[country == "FINLAND"]
+urb_pop_per_f <- urb_pop_per[country == "FINLAND"]
+dens_f <- dens[country == "FINLAND"]
+bleaf_a_f <- bleaf_a[country == "FINLAND"]
+nleaf_a_f <- nleaf_a[country == "FINLAND"]
+mleaf_a_f <- mleaf_a[country == "FINLAND"]
+bush_a_f <- bush_a[country == "FINLAND"]
+swamp_a_f <- swamp_a[country == "FINLAND"]
+farm_a_f <- farm_a[country == "FINLAND"]
+mt_a_f <- mt_a[country == "FINLAND"]
+water_a_f <- water_a[country == "FINLAND"]
+ice_a_f <- ice_a[country == "FINLAND"]
+artific_area_f <- artific_area[country == "FINLAND"]
+water_runoff_f <- water_runoff[country == "FINLAND"]
+pig_pop_f <- pig_pop[country == "FINLAND"]
+cow_pop_f <- cow_pop[country == "FINLAND"]
+WC_per_f <- WC_per[country == "FINLAND"]
+N_f <- N[country == "FINLAND"]
+drain_a_o <- append(drain_a_o, drain_a[country == "LITHUANIA"])
+pop_o <- append(pop_o, pop[country == "LITHUANIA"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "LITHUANIA"])
+dens_o <- append(dens_o, dens[country == "LITHUANIA"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "LITHUANIA"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "LITHUANIA"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "LITHUANIA"])
+bush_a_o <- append(bush_a_o, bush_a[country == "LITHUANIA"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "LITHUANIA"])
+farm_a_o <- append(farm_a_o, farm_a[country == "LITHUANIA"])
+mt_a_o <- append(mt_a_o, mt_a[country == "LITHUANIA"])
+water_a_o <- append(water_a_o, water_a[country == "LITHUANIA"])
+ice_a_o <- append(ice_a_o, ice_a[country == "LITHUANIA"])
+artific_area_o <- append(artific_area_o, artific_area[country == "LITHUANIA"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "LITHUANIA"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "LITHUANIA"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "LITHUANIA"])
+WC_per_o <- append(WC_per_o, WC_per[country == "LITHUANIA"])
+N_o <- append(N_o, N[country == "LITHUANIA"])
+drain_a_o <- append(drain_a_o, drain_a[country == "LATVIA"])
+pop_o <- append(pop_o, pop[country == "LATVIA"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "LATVIA"])
+dens_o <- append(dens_o, dens[country == "LATVIA"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "LATVIA"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "LATVIA"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "LATVIA"])
+bush_a_o <- append(bush_a_o, bush_a[country == "LATVIA"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "LATVIA"])
+farm_a_o <- append(farm_a_o, farm_a[country == "LATVIA"])
+mt_a_o <- append(mt_a_o, mt_a[country == "LATVIA"])
+water_a_o <- append(water_a_o, water_a[country == "LATVIA"])
+ice_a_o <- append(ice_a_o, ice_a[country == "LATVIA"])
+artific_area_o <- append(artific_area_o, artific_area[country == "LATVIA"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "LATVIA"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "LATVIA"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "LATVIA"])
+WC_per_o <- append(WC_per_o, WC_per[country == "LATVIA"])
+N_o <- append(N_o, N[country == "LATVIA"])
+drain_a_o <- append(drain_a_o, drain_a[country == "ESTONIA"])
+pop_o <- append(pop_o, pop[country == "ESTONIA"])
+urb_pop_per_o <- append(urb_pop_per_o, urb_pop_per[country == "ESTONIA"])
+dens_o <- append(dens_o, dens[country == "ESTONIA"])
+bleaf_a_o <- append(bleaf_a_o, bleaf_a[country == "ESTONIA"])
+nleaf_a_o <- append(nleaf_a_o, nleaf_a[country == "ESTONIA"])
+mleaf_a_o <- append(mleaf_a_o, mleaf_a[country == "ESTONIA"])
+bush_a_o <- append(bush_a_o, bush_a[country == "ESTONIA"])
+swamp_a_o <- append(swamp_a_o, swamp_a[country == "ESTONIA"])
+farm_a_o <- append(farm_a_o, farm_a[country == "ESTONIA"])
+mt_a_o <- append(mt_a_o, mt_a[country == "ESTONIA"])
+water_a_o <- append(water_a_o, water_a[country == "ESTONIA"])
+ice_a_o <- append(ice_a_o, ice_a[country == "ESTONIA"])
+artific_area_o <- append(artific_area_o, artific_area[country == "ESTONIA"])
+water_runoff_o <- append(water_runoff_o, water_runoff[country == "ESTONIA"])
+pig_pop_o <- append(pig_pop_o, pig_pop[country == "ESTONIA"])
+cow_pop_o <- append(cow_pop_o, cow_pop[country == "ESTONIA"])
+WC_per_o <- append(WC_per_o, WC_per[country == "ESTONIA"])
+N_o <- append(N_o, N[country == "ESTONIA"])
+drain_a_m <- drain_a[country == "MISSING"]
+pop_m <- pop[country == "MISSING"]
+urb_pop_per_m <- urb_pop_per[country == "MISSING"]
+dens_m <- dens[country == "MISSING"]
+bleaf_a_m <- bleaf_a[country == "MISSING"]
+nleaf_a_m <- nleaf_a[country == "MISSING"]
+mleaf_a_m <- mleaf_a[country == "MISSING"]
+bush_a_m <- bush_a[country == "MISSING"]
+swamp_a_m <- swamp_a[country == "MISSING"]
+farm_a_m <- farm_a[country == "MISSING"]
+mt_a_m <- mt_a[country == "MISSING"]
+water_a_m <- water_a[country == "MISSING"]
+ice_a_m <- ice_a[country == "MISSING"]
+artific_area_m <- artific_area[country == "MISSING"]
+water_runoff_m <- water_runoff[country == "MISSING"]
+pig_pop_m <- pig_pop[country == "MISSING"]
+cow_pop_m <- cow_pop[country == "MISSING"]
+WC_per_m <- WC_per[country == "MISSING"]
+N_m <- N[country == "MISSING"]
+```
+Eliminerade variabler: Index (Duh) och Rural Population Percentage då denna är 
+100% negativt kolinjär med Urban Population Percentage. Country används endast
+för kategorisering.
+
+```{r}
+full_model_o <- lm(N_o ~ drain_a_o + pop_o + dens_o + farm_a_o
+                   + water_runoff_o + pig_pop_o + cow_pop_o + WC_per_o)
+full_model_s <- lm(N_s ~ drain_a_s + pop_s + dens_s + farm_a_s
+                   + water_runoff_s + pig_pop_s + cow_pop_s + WC_per_s)
+full_model_f <- lm(N_f ~ drain_a_f + pop_f + dens_f + farm_a_f
+                   + water_runoff_f + pig_pop_f + cow_pop_f + WC_per_f)
+full_model_m <- lm(N_m ~ drain_a_m + pop_m + dens_m + farm_a_m
+                   + water_runoff_m + pig_pop_m + cow_pop_m + WC_per_m)
+null_model_s <- lm(N_s ~ 1)
+null_model_f <- lm(N_f ~ 1)
+null_model_m <- lm(N_m ~ 1)
+null_model_o <- lm(N_o ~ 1)
+
+```
+Hopslagen data: Poland, Russia och Lithuania hade 2 eller färre datapunkter och
+slogs därmed ihop till Other. Efter vidare undersökning lades även Estonia och Lativa till i denna kategori.
+
+```{r}
+final_model_s <- step(null_model_s, scope = list(lower = formula(null_model_s), upper = formula(full_model_s)), direction = "both")
+final_model_f <- step(null_model_f, scope = list(lower = formula(null_model_f), upper = formula(full_model_f)), direction = "both")
+final_model_m <- step(null_model_m, scope = list(lower = formula(null_model_m), upper = formula(full_model_m)), direction = "both")
+final_model_o <- step(null_model_o, scope = list(lower = formula(null_model_o), upper = formula(full_model_o)), direction = "both")
+summary(final_model_s)
+plot(final_model_s)
+summary(final_model_f)
+plot(final_model_f)
+summary(final_model_m)
+plot(final_model_m)
+summary(final_model_o)
+plot(final_model_o)
+```
+
+# Del D: Prediktering och validering
+
+Låt oss undersöka modellernas prediktionsförmåga genom att ta fram $\operatorname{RSEP}$ för LOOCV metoden. 
+
+# Globala modellerna:
+
+```{r}
+loocv_rmsep <- function(formula, data, showplot=FALSE) {
+  # Initialize a vector to store the squared errors of prediction
+  sep <- numeric(nrow(data))
+  y_pred <- numeric(nrow(data))
+  # Loop through each row of the data frame
+  for (i in 1:nrow(data)) {
+    train_data <- data[-i,]
+    test_data <- data[i , , drop = FALSE]
+    
+    model <- lm(formula, data = train_data)
+    
+    predicted <- predict(model, newdata = test_data)
+    
+    y_pred[i] <- predicted
+    
+    sep[i] <- (test_data$log_y - predicted)^2
+  }
+  rmsep <- sqrt(mean(sep))
+  if (showplot) {
+  plot(y_pred, data$log_y, main="Prediktera värden vs data", xlab="Predikterade DIN-värden", ylab = "DIN data")
+    lines(c(0,20), c(0,20), type='l')
+  }
+  return(rmsep)
+}
+
+globala_modeller <- list(mod_final, mod5, mod3, mod2, mod_full)
+
+modell_rmsep <- sapply(globala_modeller, loocv_rmsep, data = din)
+
+modell_rmse <- sapply(globala_modeller, function(m) {
+  sqrt(mean(residuals(m)^2))
+})
+
+resultat <- data.frame(Modell = c("Final", "Modell 5", "Modell 3", "Modell 2", "Full Modell"),
+           RMSEP = modell_rmsep,
+           RMSE = modell_rmse,
+           RMSEP_RMSE = modell_rmsep/modell_rmse)
+
+knitr::kable(resultat)
+
+```
+
+Så deras RMSEP värde skiljer inte så mycket, men modell 2, alltså 
+\[
+\log y = \beta_0 + \beta_1\log x_1 + \beta_2\log x_2 + \beta_5 \log x_5 + \beta_{11}\log x_{11} + \beta_{16}x_{16} + \beta_{17} \log x_{17} + \beta_{18} \log x_{18},
+\]
+har minst error. Om man är ute efter en simplare modell men med liknande förmåga att prediktera, skulle modellen vi valde att kalla final vara ett naturligt val. Den har endast 5 förklarande variabler, 
+\[
+\log y = \beta_0 + \beta_2\log x_2+ \beta_{11}\log x_{11} + \beta_{16}x_{16} + \beta_{17} \log x_{17} + \beta_{18} \log x_{18}
+\]
+till skilnad från modell 2 som har 7. De variablerna som skiljer modellerna åt är $x_1$ som motsvarar avrinningsområdets storlek och $x_5$ som motsvarar befolkningstätheten.
+
+```{r}
+loocv_rmsep(mod_final, din, TRUE)
+```
+
+Låt oss fokusera på Sverige
+
+```{r}
+
+din_s <- subset(din, Land == "SWEDEN")
+
+sverige_egen_modell <- lm(log_y ~ log_x11 + log_x2 + x16 + log_x17, data=din_s)
+sverige_final_modell <- lm(log_y ~ log_x11 + log_x2 + x16 + log_x17 + log_x18, data=din_s)
+sverige_modell_2 <- lm(log_y ~ log_x1 + log_x5 + log_x11 + log_x2 + x16 + log_x17 + log_x18, data=din_s)
+
+sverige_modeller <- list(sverige_egen_modell, sverige_final_modell, sverige_modell_2)
+
+sverige_modell_rmsep <- sapply(sverige_modeller, loocv_rmsep, data = din_s)
+
+sverige_modell_msep <- sverige_modell_rmsep^2
+
+sverige_modell_rmse <- sapply(sverige_modeller, function(m) {
+  sqrt(mean(residuals(m)^2))
+})
+
+print(sverige_modell_rmse)
+
+sverige_resultat <- data.frame(Modell = c("Egna modellen", "Final modell", "Modell 2"),
+           RMSE = sverige_modell_rmse,
+           RMSEP = sverige_modell_rmsep,
+           RMSEP_RMSE = sverige_modell_rmsep/sverige_modell_rmse)
+
+
+sd(din_s$log_y)
+
+knitr::kable(sverige_resultat)
+
+```
+
+Och Finland:
+
+```{r}
+
+din_f <- subset(din, Land == "FINLAND")
+
+f_egen_modell <- lm(log_y ~ log_x2 + x16 + log_x17, data=din_f)
+f_final_modell <- lm(log_y ~ log_x11 + log_x2 + x16 + log_x17 + log_x18, data=din_f)
+f_modell_2 <- lm(log_y ~ log_x1 + log_x5 + log_x11 + log_x2 + x16 + log_x17 + log_x18, data=din_f)
+
+f_modeller <- list(f_egen_modell, f_final_modell, f_modell_2)
+
+f_modell_rmsep <- sapply(f_modeller, loocv_rmsep, data = din_f)
+
+f_modell_rmse <- sapply(f_modeller, function(m) {
+  sqrt(mean(residuals(m)^2))
+})
+
+f_resultat <- data.frame(Modell = c("Egna modellen", "Final modell", "Modell 2"),
+           RMSEP = f_modell_rmsep,
+           RMSE = f_modell_rmse,
+           RMSEP_RMSE = f_modell_rmsep/f_modell_rmse)
+
+
+sd(din_f$log_y)
+
+sqrt(mean(residuals(f_egen_modell)^2))
+
+knitr::kable(f_resultat)
+
+```
+
+```{r}
+loocv_rmsep(sverige_egen_modell, din_s, TRUE )
+loocv_rmsep(f_egen_modell, din_f, TRUE)
+```
+
+
+
+
+
