@@ -297,7 +297,7 @@ Nu kan vi se att VIFen för log_x1 och log_x2 är mycket rimligare nivåer med 2
 
 Men när den extrema kollineriteten är borta ser vi att log_x1 har p = 0.498, så avrinningområdets storlek tillför inget mer än det andra visar redan visar. Så vi kan ta bort den. 
 
-Log_x11, log_x17 och log_x18 är högt kollineära med VIF 33, 62 och 144. Vilket inte är orimligt då jordbruksmark, svin och nötkreatur hänger ihop geografiskt. Vilket ger ett eget kollinjärt kluster. 
+Log_x11, log_x17 och log_x18 är högt kollineära med VIF 33, 62 och 144. Vilket inte är orimligt då jordbruksmark, svin och nötkreatur hänger ihop geografiskt. 
 
 
 ```{r}
@@ -309,66 +309,93 @@ vif(mod4)
 
 
 ```
-
+Nu ser vi att alla variablerna är signifikanta men det är fortfarande en hög VIF på x11,x17 och x18. Vi testar att göra en sammanslagnning av dessa tre, och se om det hjälper.
 
 
 ```{r}
 
+din$log_djur <- log(din$x17 + din$x18 + 1)
 
+mod5 <- update(mod4, . ~ . - log_x17 - log_x18 + log_djur)
+summary(mod5)
+vif(mod5)
+
+
+```
+Vi ser att log_djur inte är signifikant då p = 0.45, trots at log_x17 och log_x18 var starkt signifikanta under mod4. Vilket tyder på en suppressoreffekt.
+
+Vi har att VIF sjönk men adj R^2 föll. Så vi går tillbaka till mod4 där vi hade x17 och x18 separata för vår slutmodell. 
+
+Den höga VIFen är ett motiverat undantag, och vi behållre dem för att de fångar en reel kontrast som samanslagningen inte visade. 
+
+Då använder vi alltså mod4 som vår slutgiltiga bas för att se plottarna.
+
+```{r}
+
+mod_final <- mod4
+summary(mod_final)
+vif(mod_final)
+
+
+```
+
+```{r}
+
+
+par(mfrow = c(1, 2))
+plot(mod_final)
+par(mfrow = c(1, 1))
 
 
 
 ```
 
+När vi kikar på den första som visar residuals vs fitted är den röda linjen nästan helt platt utan större krökning, förutom i början. Så linjäritetsantagandet verkar kvarstå.
+
+I den andra så är observationerna runt mittenlinjen, men avviker lite i svansarna. Vilket är från punkterna 78 i nedre, och 16 samt 86 i övre. 
+
+Vi ser att den röda linjen lutar svagt nedåt när vi kollar på den tredje alltså att residualspridningen minskar något vid högre fitted values, vilket kan tyda på en mild heteroskedastitet. Det är samma punkter som sticker ut igen.
+
+När vi kollar på residuals vs leverage ser vi att ingen punkt ligger nära Cook's distance-konturerna (0,5), inte ens de med förhöjd leverage runt 0,15–0,2. Så även om 68/16/78 sticker ut med stora residualer är de inte inflytelserika i statistisk mening — de driver inte modellen i någon dramatisk riktning.
 
 
-
-```{r}
-
+Modellen är godkänd på det stora hela, ingen anledning att kasta ut observationer bara för att de har stora residualer, eftersom Cook's distance visar att de inte förvränger koefficienterna. De tre punkterna är dock värda att titta närmare på för att förstå varför de avviker.
 
 
-
-
-```
-
-```{r}
-
-
-
-
-
-```
-
-
+Sedan gör vi några test som komplement till plottarna, och tittar närmare på de avvikande punkterna.
 
 ```{r}
 
 
+# Formella tester som komplement till plottarna
+bptest(mod_final)
+shapiro.test(resid(mod_final))
 
+# Titta närmare på de återkommande avvikande punkterna
+din[c(68, 16, 78), c("id", "x2", "x11", "x17", "x18", "x16", "y", "Land")]
 
-
-```
-
-
-
-```{r}
-
-
-
-
-
-```
-
-
-
-
-```{r}
-
-
-
+# Kvantitativ koll av Cook's distance (bekräftar det leverage-plotten visade)
+cooksd <- cooks.distance(mod_final)
+plot(cooksd, type = "h", main = "Cook's distance")
+abline(h = 4/nrow(din), col = "red", lty = 2)
+which(cooksd > 4/nrow(din))
 
 
 ```
+
+När vi kollar på Breusch-pagan med p =0.97, ser vi ingen heteroskedasticet. Den svaga lutningen i Scalelocation plotten var bara ett visuellt brus, inte ett statistiskt problem.
+
+Nu kollar vi på Shapiro-Wilk med p =0.485 där residualerna är normarfördelarna. De avikkande svansarna från punkterna 16, 68 och 78 är inte tillräckligt extrema för att ifrågasätta normalitetsantagandet.
+
+
+När vi ser cook's distance är det 8 punkter som överstiger linjen 4/n, men detta betyder inte att dessa punkter är problematiska, då det är en hård gräns som flaggar ungefär 5-10% av observationerna. Men för att behöva undersöka vidare ifall de är problematiska kräver att D > 0.5. Vilket ingen punkt kommer nära.
+
+För raderna har vi att 68 (Finland) och 78 (Sverige) har stora förklaringsvariabler men ovanligt lågt DIN, vilket ger de stora negativa residualerna, detta skulle kunna bero på lokala faktorer som gödselhantering eller våtmarker. Rad 16 saknar Land (NA), oproblematiskt för modellen men bra att känna till.
+
+Modellen verkar klara alla antaganden om linjäritet, homoskedasticitet, normalitet och inga extremt inflytelserika punkter. Som gör att vi behöver ta bort observationer.
+
+
+
 ```{r}
 
 
